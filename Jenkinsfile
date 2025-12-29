@@ -29,7 +29,7 @@ pipeline {
 
             for (service in services) {
               stage("Build and push ${service} Application") {
-                  sh "cd ${service} && mvn test"
+                  sh "cd ${service} && mvn clean install"
                   sh "docker build -t sebastr/${service}:${BUILD_NUMBER} ${service}/."
 
                   docker.withRegistry('https://index.docker.io/v1/', 'docker-cred') {
