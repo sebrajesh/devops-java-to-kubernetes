@@ -8,7 +8,7 @@ pipeline {
   stages {
     stage('Checkout') {
       steps {
-        git branch: 'main', url: 'git branch: 'main', url: 'https://github.com/sebrajesh/devops-java-to-kubernetes.git'
+        git branch: 'main', url: 'https://github.com/sebrajesh/devops-java-to-kubernetes.git'
       }
     }
     stage('Build shopfront Application') {
