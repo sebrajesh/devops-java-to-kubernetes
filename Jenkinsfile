@@ -11,27 +11,6 @@ pipeline {
         git branch: 'main', url: 'https://github.com/sebrajesh/devops-java-to-kubernetes.git'
       }
     }
-    stage('Build shopfront Application') {
-      steps {
-        sh 'ls -ltr'
-        // build the project and create a JAR file
-        sh 'cd shopfront && mvn clean package'
-      }
-    }
-    stage('Build  productcatalogue Application') {
-      steps {
-        sh 'ls -ltr'
-        // build the project and create a JAR file
-        sh 'cd productcatalogue && mvn clean package'
-      }
-    }
-    stage('Build stockmanager Application') {
-      steps {
-        sh 'ls -ltr'
-        // build the project and create a JAR file
-        sh 'cd stockmanager && mvn clean package'
-      }
-    }
     // stage('Static Code Analysis') {
     //   environment {
     //     SONAR_URL = "http://34.201.116.83:9000"
@@ -42,53 +21,24 @@ pipeline {
     //     }
     //   }
     // }
-    stage('Build and Push shopfront Docker Image') {
-      environment {
-        DOCKER_IMAGE = "sebastr/shopfront:${BUILD_NUMBER}"
-        // DOCKERFILE_LOCATION = "java-maven-sonar-argocd-helm-k8s/spring-boot-app/Dockerfile"
-        REGISTRY_CREDENTIALS = credentials('docker-cred')
-      }
-      steps {
-        script {
-            sh 'cd shopfront && docker build -t ${DOCKER_IMAGE} .'
-            def dockerImage = docker.image("${DOCKER_IMAGE}")
-            docker.withRegistry('https://index.docker.io/v1/', "docker-cred") {
-                dockerImage.push()
-            }
+
+    stage('Build and Push Docker Images') {
+        steps {
+          script {
+            def services = ['shopfront', 'productcatalogue', 'stockmanager']
+
+            for (service in services) {
+              stage("Build and push ${service} Application") {
+                  sh "cd ${service} && mvn test"
+                  sh "docker build -t sebastr/${service}:${BUILD_NUMBER} ."
+
+                  docker.withRegistry('https://index.docker.io/v1/', 'docker-cred') {
+                      docker.image("sebastr/${service}:${BUILD_NUMBER}").push()
+                  }
+              }
+            }  
+          }
         }
-      }
-    }
-    stage('Build and Push productcatalogue Docker Image') {
-      environment {
-        DOCKER_IMAGE = "sebastr/productcatalogue:${BUILD_NUMBER}"
-        // DOCKERFILE_LOCATION = "java-maven-sonar-argocd-helm-k8s/spring-boot-app/Dockerfile"
-        REGISTRY_CREDENTIALS = credentials('docker-cred')
-      }
-      steps {
-        script {
-            sh 'cd productcatalogue && docker build -t ${DOCKER_IMAGE} .'
-            def dockerImage = docker.image("${DOCKER_IMAGE}")
-            docker.withRegistry('https://index.docker.io/v1/', "docker-cred") {
-                dockerImage.push()
-            }
-        }
-      }
-    }
-    stage('Build and Push stockmanager Docker Image') {
-      environment {
-        DOCKER_IMAGE = "sebastr/stockmanager:${BUILD_NUMBER}"
-        // DOCKERFILE_LOCATION = "java-maven-sonar-argocd-helm-k8s/spring-boot-app/Dockerfile"
-        REGISTRY_CREDENTIALS = credentials('docker-cred')
-      }
-      steps {
-        script {
-            sh 'cd stockmanager && docker build -t ${DOCKER_IMAGE} .'
-            def dockerImage = docker.image("${DOCKER_IMAGE}")
-            docker.withRegistry('https://index.docker.io/v1/', "docker-cred") {
-                dockerImage.push()
-            }
-        }
-      }
     }
     stage('Update Deployment File') {
         environment {
@@ -100,16 +50,27 @@ pipeline {
                 sh '''
                     git config user.email "sebrajesh@gmail.com"
                     git config user.name "Rajesh Sebastian"
-                    BUILD_NUMBER=${BUILD_NUMBER}
+
+                    echo "Updating deployment files with new image tags..."
                     sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" kubernetes/shopfront-service.yaml
                     sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" kubernetes/productcatalogue-service.yaml
                     sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" kubernetes/stockmanager-service.yaml
+
                     git add .
-                    git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+                    git diff --quiet || git commit -m "Update deployment image to version ${BUILD_NUMBER}"
                     git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
                 '''
             }
         }
+    } 
+  }
+
+  post {
+    success {
+      echo "Build and push completed successfully"
+    }
+    failure {
+      echo "Pipeline failed"
     }
   }
 }

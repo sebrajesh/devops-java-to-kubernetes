@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: productcatalogue
-        image: sebastr/productcatalogue:latest
+        image: sebastr/productcatalogue:replaceImageTag
         ports:
         - containerPort: 8020
         livenessProbe:

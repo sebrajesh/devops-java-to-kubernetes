@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: stockmanager
-        image: sebastr/stockmanager:latest
+        image: sebastr/stockmanager:replaceImageTag
         ports:
         - containerPort: 8030
         livenessProbe:
