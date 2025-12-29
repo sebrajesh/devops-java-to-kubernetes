@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: shopfront
-        image: sebastr/shopfront:replaceImageTag
+        image: sebastr/shopfront:6
         ports:
         - containerPort: 8010
         livenessProbe:
